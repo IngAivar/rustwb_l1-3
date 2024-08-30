@@ -9,14 +9,23 @@ fn main() {
     let (tx, rx) = mpsc::channel();
 
     // Создаем потоки для расчета сумм квадратов
-    for num in _numbers {
-        let tx = tx.clone();
+    let handles: Vec<_> = _numbers.into_iter()
+        .map(|num| {
+            let tx = tx.clone();
+            thread::spawn(move || {
+                let square = num * num + num * num;
+                tx.send(square).unwrap();
+            })
+        })
+        .collect();
 
-        thread::spawn(move || {
-            let square = num * num + num * num;
-            tx.send(square).unwrap();
-        });
+    // Ждем завершения всех потоков
+    for handle in handles {
+        handle.join().unwrap();
     }
+
+    // Закрываем канал (необязательно, но рекомендуется)
+    drop(tx);
 
     // Считываем результаты из канала и выводим их
     for result in rx {
